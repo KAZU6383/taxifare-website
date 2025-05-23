@@ -2,6 +2,7 @@
 import streamlit as st
 import requests
 from datetime import datetime
+import pandas as pd
 
 # アプリのタイトルを表示
 st.title("🚕 Taxi Fare Prediction App")
@@ -11,6 +12,10 @@ st.markdown("""
 Enter your ride details (date, time, location, passenger count)
 and get a fare estimate using Le Wagon's prediction API.
 """)
+
+# セッションステート初期化（履歴のため）
+if "fare_history" not in st.session_state:
+    st.session_state.fare_history = []
 
 # 乗車日と時間の入力
 pickup_date = st.date_input("Pickup Date")
@@ -51,5 +56,27 @@ if st.button("Predict Fare"):
 
         prediction = response.json()["fare"]
         st.success(f"Estimated Fare: ${prediction:.2f}")
+
+        st.session_state.fare_history.append({
+            "datetime": pickup_datetime,
+            "fare": prediction
+        })
+
     except Exception as e:
         st.error(f"Failed to get prediction: {e}")
+
+    # 地図表示
+pickup_coords = pd.DataFrame({'lat': [pickup_latitude], 'lon': [pickup_longitude]})
+dropoff_coords = pd.DataFrame({'lat': [dropoff_latitude], 'lon': [dropoff_longitude]})
+
+st.map(pickup_coords, zoom=12)
+st.caption("📍 Pickup Location")
+
+st.map(dropoff_coords, zoom=12)
+st.caption("🏁 Dropoff Location")
+
+    # グラフ表示
+if st.session_state.fare_history:
+    df_history = pd.DataFrame(st.session_state.fare_history)
+    st.line_chart(df_history.set_index("datetime"))
+    st.caption("📊 Fare Prediction History")
